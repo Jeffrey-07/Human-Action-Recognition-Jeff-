@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Human Action Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ml5@0.4.3/dist/ml5.min.js"></script>
+    <script src="./h.js"></script>
+  </head>
+  <body>
+    <h1>Human Action Detection using PoseNet</h1>
+    <video id="video" width="640" height="480" autoplay></video>
+    <script>
+      let video;
+      let poseNet;
+      let poses = [];
+      let knnClassifier = ml5.KNNClassifier(); // Initialize KNN Classifier
+
+      function setup() {
+        video = document.getElementById('video');
+        // Start webcam
+        if (navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function (stream) {
+              video.srcObject = stream;
+            });
+        }
+
+        // Load PoseNet model
+        poseNet = ml5.poseNet(video, modelLoaded);
+        poseNet.on('pose', function (results) {
+          poses = results;
+          if (poses.length > 0) {
+            const keypoints = poses[0].pose.keypoints;
+            // Extract the keypoint positions
+            let inputs = [];
+            keypoints.forEach((keypoint) => {
+              inputs.push(keypoint.position.x, keypoint.position.y);
+            });
+            // If enough examples have been trained, predict the action
+            if (knnClassifier.getNumLabels() > 0) {
+              knnClassifier.classify(inputs, gotResult);
+            }
+          }
+        });
+      }
+
+      function modelLoaded() {
+        console.log('PoseNet Model Loaded');
+      }
+
+      function gotResult(err, result) {
+        if (err) {
+          console.error(err);
+        } else {
+          console.log(`Action Detected: ${result.label}`);
+        }
+      }
+
+      setup();
+    </script>
+  </body>
+</html>
